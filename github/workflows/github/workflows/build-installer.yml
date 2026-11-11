@@ -1,0 +1,45 @@
+name: Windows installer
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build game
+        run: cargo build --release
+
+      - name: Collect files
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/throne-rubezh.exe dist/
+          cp -r assets dist/assets
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Throne-Rubezh-Setup
+          path: installer/Throne-Rubezh-Setup.exe
+
+      - name: Publish download link
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Throne Rubezh (latest build)
+          files: installer/Throne-Rubezh-Setup.exe
